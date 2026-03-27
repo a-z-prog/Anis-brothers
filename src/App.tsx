@@ -271,8 +271,13 @@ function App() {
   const handleLogin = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login failed:", error);
+      if (error.code === 'auth/network-request-failed') {
+        alert("Login failed: Network error. Please check your internet connection or ensure your domain is authorized in Firebase Console.");
+      } else {
+        alert(`Login failed: ${error.message}`);
+      }
     }
   };
 
