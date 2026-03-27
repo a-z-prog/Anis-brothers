@@ -1514,7 +1514,7 @@ function App() {
       {/* Footer */}
       <footer className="max-w-7xl mx-auto p-8 text-center border-t border-black mt-12">
         <p className="text-[10px] font-mono uppercase text-gray-500 tracking-widest">
-          © 2026 Anis Brothers Cooperative • Built for Community
+          © 2026 Razin's project • Built for Community
         </p>
       </footer>
     </div>
