@@ -1,0 +1,97 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: members
+    // Fields:
+    //   - name: string (required)
+    //   - phone: string (optional)
+    //   - joinedAt: timestamp (required)
+    //   - totalSavings: number (required)
+    //
+    // Collection: transactions
+    // Fields:
+    //   - memberId: string (required)
+    //   - amount: number (required)
+    //   - type: string (required, 'deposit' | 'withdrawal')
+    //   - date: timestamp (required)
+    //   - addedBy: string (required, uid)
+    //
+    // ===============================================================
+
+    // Collection: expenses
+    // Fields:
+    //   - title: string (required)
+    //   - category: string (required)
+    //   - amount: number (required)
+    //   - date: timestamp (required)
+    //   - addedBy: string (required, uid)
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.email == "mhrajin90@gmail.com" && request.auth.token.email_verified == true);
+    }
+
+    function isValidMember(data) {
+      return data.keys().hasOnly(['name', 'phone', 'joinedAt', 'totalSavings', 'shares']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.joinedAt is timestamp &&
+             data.totalSavings is number &&
+             data.shares is number && data.shares >= 1 &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() < 20));
+    }
+
+    function isValidTransaction(data) {
+      return data.keys().hasOnly(['memberId', 'memberName', 'amount', 'type', 'date', 'addedBy']) &&
+             data.memberId is string &&
+             data.memberName is string && data.memberName.size() > 0 &&
+             data.amount is number && data.amount > 0 &&
+             data.type in ['deposit', 'withdrawal'] &&
+             data.date is timestamp &&
+             data.addedBy == request.auth.uid;
+    }
+
+    function isValidExpense(data) {
+      return data.keys().hasOnly(['title', 'category', 'amount', 'date', 'addedBy']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.category is string && data.category.size() > 0 &&
+             data.amount is number && data.amount > 0 &&
+             data.date is timestamp &&
+             data.addedBy == request.auth.uid;
+    }
+
+    match /members/{memberId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() && isValidMember(request.resource.data);
+      allow update: if isAdmin() && isValidMember(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() && isValidTransaction(request.resource.data);
+      allow update: if isAdmin() && isValidTransaction(request.resource.data) &&
+                      request.resource.data.date == resource.data.date &&
+                      request.resource.data.memberId == resource.data.memberId;
+      allow delete: if isAdmin();
+    }
+
+    match /expenses/{expenseId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() && isValidExpense(request.resource.data);
+      allow update, delete: if isAdmin();
+    }
+  }
+}

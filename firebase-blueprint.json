@@ -1,0 +1,58 @@
+{
+  "entities": {
+    "Member": {
+      "title": "Member",
+      "description": "A member of the cooperative.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Full name of the member" },
+        "phone": { "type": "string", "description": "Phone number" },
+        "joinedAt": { "type": "string", "format": "date-time", "description": "When they joined" },
+        "totalSavings": { "type": "number", "description": "Current total savings" },
+        "shares": { "type": "number", "description": "Number of shares owned (1 share = 100 Taka)" }
+      },
+      "required": ["name", "joinedAt", "totalSavings", "shares"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A savings deposit or withdrawal.",
+      "type": "object",
+      "properties": {
+        "memberId": { "type": "string", "description": "ID of the member" },
+        "memberName": { "type": "string", "description": "Name of the member" },
+        "amount": { "type": "number", "description": "Amount of the transaction" },
+        "type": { "type": "string", "enum": ["deposit", "withdrawal"], "description": "Type of transaction" },
+        "date": { "type": "string", "format": "date-time", "description": "Date of transaction" },
+        "addedBy": { "type": "string", "description": "UID of the user who added this" }
+      },
+      "required": ["memberId", "amount", "type", "date", "addedBy"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "A cooperative expense.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Title of the expense" },
+        "category": { "type": "string", "description": "Category (Meeting, Food, Transport, Bank Charge, etc.)" },
+        "amount": { "type": "number", "description": "Amount spent" },
+        "date": { "type": "string", "format": "date-time", "description": "Date of expense" },
+        "addedBy": { "type": "string", "description": "UID of the user who added this" }
+      },
+      "required": ["title", "category", "amount", "date", "addedBy"]
+    }
+  },
+  "firestore": {
+    "/members/{memberId}": {
+      "schema": "Member",
+      "description": "Collection of cooperative members."
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Collection of all savings transactions."
+    },
+    "/expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "Collection of cooperative expenses."
+    }
+  }
+}
