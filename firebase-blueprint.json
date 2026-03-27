@@ -39,6 +39,19 @@
         "addedBy": { "type": "string", "description": "UID of the user who added this" }
       },
       "required": ["title", "category", "amount", "date", "addedBy"]
+    },
+    "Income": {
+      "title": "Income",
+      "description": "A cooperative general income.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Title of the income" },
+        "category": { "type": "string", "description": "Category (Investment, Donation, Bank Interest, etc.)" },
+        "amount": { "type": "number", "description": "Amount received" },
+        "date": { "type": "string", "format": "date-time", "description": "Date of income" },
+        "addedBy": { "type": "string", "description": "UID of the user who added this" }
+      },
+      "required": ["title", "category", "amount", "date", "addedBy"]
     }
   },
   "firestore": {
@@ -53,6 +66,10 @@
     "/expenses/{expenseId}": {
       "schema": "Expense",
       "description": "Collection of cooperative expenses."
+    },
+    "/incomes/{incomeId}": {
+      "schema": "Income",
+      "description": "Collection of cooperative general incomes."
     }
   }
 }

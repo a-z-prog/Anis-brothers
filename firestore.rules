@@ -32,6 +32,14 @@ service cloud.firestore {
     //   - date: timestamp (required)
     //   - addedBy: string (required, uid)
     //
+    // Collection: incomes
+    // Fields:
+    //   - title: string (required)
+    //   - category: string (required)
+    //   - amount: number (required)
+    //   - date: timestamp (required)
+    //   - addedBy: string (required, uid)
+    //
     // ===============================================================
 
     // Helper Functions
@@ -72,6 +80,15 @@ service cloud.firestore {
              data.addedBy == request.auth.uid;
     }
 
+    function isValidIncome(data) {
+      return data.keys().hasOnly(['title', 'category', 'amount', 'date', 'addedBy']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.category is string && data.category.size() > 0 &&
+             data.amount is number && data.amount > 0 &&
+             data.date is timestamp &&
+             data.addedBy == request.auth.uid;
+    }
+
     match /members/{memberId} {
       allow read: if isAuthenticated();
       allow create: if isAdmin() && isValidMember(request.resource.data);
@@ -91,6 +108,12 @@ service cloud.firestore {
     match /expenses/{expenseId} {
       allow read: if isAuthenticated();
       allow create: if isAdmin() && isValidExpense(request.resource.data);
+      allow update, delete: if isAdmin();
+    }
+
+    match /incomes/{incomeId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() && isValidIncome(request.resource.data);
       allow update, delete: if isAdmin();
     }
   }
