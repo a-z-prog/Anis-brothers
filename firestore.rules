@@ -90,14 +90,14 @@ service cloud.firestore {
     }
 
     match /members/{memberId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow create: if isAdmin() && isValidMember(request.resource.data);
       allow update: if isAdmin() && isValidMember(request.resource.data);
       allow delete: if isAdmin();
     }
 
     match /transactions/{transactionId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow create: if isAdmin() && isValidTransaction(request.resource.data);
       allow update: if isAdmin() && isValidTransaction(request.resource.data) &&
                       request.resource.data.date == resource.data.date &&
@@ -106,13 +106,13 @@ service cloud.firestore {
     }
 
     match /expenses/{expenseId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow create: if isAdmin() && isValidExpense(request.resource.data);
       allow update, delete: if isAdmin();
     }
 
     match /incomes/{incomeId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow create: if isAdmin() && isValidIncome(request.resource.data);
       allow update, delete: if isAdmin();
     }

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, Component } from 'react';
+import React, { useState, useEffect, Component, useRef } from 'react';
 import { 
   auth, 
   db, 
@@ -202,6 +202,23 @@ function App() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [incomes, setIncomes] = useState<Income[]>([]);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'members' | 'history' | 'expenses' | 'incomes' | 'all_history'>('dashboard');
+  const [showLeftScroll, setShowLeftScroll] = useState(false);
+  const [showRightScroll, setShowRightScroll] = useState(true);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const handleScroll = () => {
+    if (scrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      setShowLeftScroll(scrollLeft > 10);
+      setShowRightScroll(scrollLeft < scrollWidth - clientWidth - 10);
+    }
+  };
+
+  useEffect(() => {
+    handleScroll();
+    window.addEventListener('resize', handleScroll);
+    return () => window.removeEventListener('resize', handleScroll);
+  }, []);
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [isAddingTransaction, setIsAddingTransaction] = useState(false);
   const [isAddingExpense, setIsAddingExpense] = useState(false);
@@ -230,34 +247,34 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
-
+    // Fetch data regardless of auth state for public viewing
     const qMembers = query(collection(db, 'members'), orderBy('name', 'asc'));
     const unsubMembers = onSnapshot(qMembers, (snapshot) => {
       setMembers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Member)));
     }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'members');
+      // Only log error, don't throw if it's just a permission issue on initial load
+      console.warn('Firestore read error:', error);
     });
 
     const qTx = query(collection(db, 'transactions'), orderBy('date', 'desc'));
     const unsubTx = onSnapshot(qTx, (snapshot) => {
       setTransactions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction)));
     }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'transactions');
+      console.warn('Firestore read error:', error);
     });
 
     const qExp = query(collection(db, 'expenses'), orderBy('date', 'desc'));
     const unsubExp = onSnapshot(qExp, (snapshot) => {
       setExpenses(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense)));
     }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'expenses');
+      console.warn('Firestore read error:', error);
     });
 
     const qInc = query(collection(db, 'incomes'), orderBy('date', 'desc'));
     const unsubInc = onSnapshot(qInc, (snapshot) => {
       setIncomes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Income)));
     }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'incomes');
+      console.warn('Firestore read error:', error);
     });
 
     return () => {
@@ -266,7 +283,7 @@ function App() {
       unsubExp();
       unsubInc();
     };
-  }, [user]);
+  }, []);
 
   const handleLogin = async () => {
     try {
@@ -444,52 +461,6 @@ function App() {
     m.phone?.includes(searchTerm)
   );
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-[#E4E3E0] flex items-center justify-center p-4 font-sans">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-md w-full bg-white border border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
-        >
-          <div className="flex flex-col items-center text-center space-y-6">
-            <div className="w-16 h-16 bg-black flex items-center justify-center rounded-full">
-              <CircleDollarSign className="text-white w-10 h-10" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tighter uppercase italic font-serif text-black">Anis Brothers</h1>
-              <p className="text-gray-500 mt-2 font-mono text-sm uppercase tracking-widest">Savings Cooperative</p>
-            </div>
-            
-            <div className="w-full space-y-4">
-              <div className="space-y-2">
-                <p className="text-[10px] font-mono uppercase text-gray-500 font-bold text-left">Authorized Only</p>
-                <button 
-                  onClick={handleLogin}
-                  className="w-full flex items-center justify-center gap-3 bg-black text-white py-4 px-6 hover:bg-gray-800 transition-colors font-bold uppercase tracking-widest"
-                >
-                  <ShieldCheck size={20} />
-                  Admin Login
-                </button>
-              </div>
-              
-              <div className="space-y-2">
-                <p className="text-[10px] font-mono uppercase text-gray-500 font-bold text-left">Public Access</p>
-                <button 
-                  onClick={handleLogin}
-                  className="w-full flex items-center justify-center gap-3 border border-black bg-white text-black py-4 px-6 hover:bg-gray-50 transition-colors font-bold uppercase tracking-widest"
-                >
-                  <Users size={20} />
-                  Member Access
-                </button>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-[#E4E3E0] text-black font-sans">
       {/* Header */}
@@ -501,45 +472,93 @@ function App() {
           </div>
           
           <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-gray-100 border border-black rounded-full">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              <span className="text-xs font-mono uppercase font-bold">{user.displayName}</span>
-              {!isAdmin && <span className="ml-1 px-1.5 py-0.5 bg-gray-200 text-[8px] border border-black/20 rounded font-bold">View Only</span>}
-            </div>
-            <button 
-              onClick={handleLogout}
-              className="p-2 hover:bg-gray-100 border border-transparent hover:border-black transition-all"
-              title="Logout"
-            >
-              <LogOut size={20} />
-            </button>
+            {user ? (
+              <>
+                <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-gray-100 border border-black rounded-full">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                  <span className="text-xs font-mono uppercase font-bold">{user.displayName}</span>
+                  {!isAdmin && <span className="ml-1 px-1.5 py-0.5 bg-gray-200 text-[8px] border border-black/20 rounded font-bold">View Only</span>}
+                </div>
+                <button 
+                  onClick={handleLogout}
+                  className="p-2 hover:bg-gray-100 border border-transparent hover:border-black transition-all"
+                  title="Logout"
+                >
+                  <LogOut size={20} />
+                </button>
+              </>
+            ) : (
+              <button 
+                onClick={handleLogin}
+                className="flex items-center gap-2 bg-black text-white px-4 py-2 font-bold uppercase tracking-widest text-xs hover:bg-gray-800 transition-all border border-black"
+              >
+                <ShieldCheck size={16} />
+                Admin Access
+              </button>
+            )}
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto p-4 md:p-8">
         {/* Navigation Tabs */}
-        <div className="flex border-b border-black mb-8 overflow-x-auto no-scrollbar">
-          {[
-            { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
-            { id: 'members', label: 'Members', icon: Users },
-            { id: 'all_history', label: 'All History', icon: History },
-            { id: 'history', label: 'Savings History', icon: History },
-            { id: 'incomes', label: 'Income History', icon: TrendingUp },
-            { id: 'expenses', label: 'Expense History', icon: Receipt },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={cn(
-                "flex items-center gap-2 px-6 py-4 font-bold uppercase tracking-widest text-sm transition-all border-b-2 border-transparent",
-                activeTab === tab.id ? "border-black bg-white" : "text-gray-500 hover:text-black"
-              )}
-            >
-              <tab.icon size={18} />
-              {tab.label}
-            </button>
-          ))}
+        <div className="relative mb-8 -mx-4 px-4 md:mx-0 md:px-0 group">
+          <div 
+            ref={scrollRef}
+            onScroll={handleScroll}
+            className="flex border-b border-black overflow-x-auto no-scrollbar scroll-smooth"
+          >
+            {[
+              { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
+              { id: 'members', label: 'Members', icon: Users },
+              { id: 'all_history', label: 'All History', icon: History },
+              { id: 'history', label: 'Savings History', icon: History },
+              { id: 'incomes', label: 'Income History', icon: TrendingUp },
+              { id: 'expenses', label: 'Expense History', icon: Receipt },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-3 md:px-6 md:py-4 font-bold uppercase tracking-widest text-xs md:text-sm transition-all border-b-2 border-transparent whitespace-nowrap",
+                  activeTab === tab.id ? "border-black bg-white" : "text-gray-500 hover:text-black"
+                )}
+              >
+                <tab.icon size={18} />
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          
+          {/* Visual cues for scrolling */}
+          <AnimatePresence>
+            {showLeftScroll && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-gray-50 to-transparent pointer-events-none md:hidden z-[5]" 
+              />
+            )}
+            {showRightScroll && (
+              <>
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-gray-50 to-transparent pointer-events-none md:hidden z-[5]" 
+                />
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 md:hidden animate-pulse pointer-events-none z-[6]"
+                >
+                  <ChevronRight size={20} className="text-gray-400" />
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Content Area */}
@@ -659,8 +678,8 @@ function App() {
                     ]
                     .sort((a, b) => b.date.toDate().getTime() - a.date.toDate().getTime())
                     .slice(0, 5)
-                    .map((item, i) => (
-                      <div key={i} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                    .map((item) => (
+                      <div key={`${item.kind}-${item.id}`} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
                         <div className="flex items-center gap-4">
                           <div className={cn(
                             "w-8 h-8 flex items-center justify-center border border-black",
@@ -711,7 +730,7 @@ function App() {
               className="space-y-6"
             >
               <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold uppercase italic font-serif">Full Activity History (সব ইতিহাস)</h2>
+                <h2 className="text-xl font-bold uppercase italic font-serif">Full Activity History</h2>
               </div>
 
               <div className="bg-white border border-black overflow-hidden">
@@ -728,8 +747,8 @@ function App() {
                     ...incomes.map(i => ({ ...i, kind: 'income' as const }))
                   ]
                   .sort((a, b) => b.date.toDate().getTime() - a.date.toDate().getTime())
-                  .map((item, i) => (
-                    <div key={i} className="grid grid-cols-4 p-4 items-center hover:bg-gray-50 transition-colors">
+                  .map((item) => (
+                    <div key={`${item.kind}-${item.id}`} className="grid grid-cols-4 p-4 items-center hover:bg-gray-50 transition-colors">
                       <div className="flex items-center gap-2 text-xs font-mono text-gray-500">
                         <Calendar size={12} />
                         {format(item.date.toDate(), 'MMM d, yyyy')}
